@@ -228,7 +228,7 @@ window.onload = function() {
             return null;
         }
 
-        var peer = new RTCPeerConnection(configuration);
+        var peer = new RTCPeerConnection(null);
         
         //添加本地stream到要传输的的stream列表中
         peer.addStream(stream, function(err) {
