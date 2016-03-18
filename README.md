@@ -23,7 +23,10 @@ https 服务器：
 
 如果使用chrome，打开webserver中的html，如果使用firefox，可以在本地直接打开html。
 
-![演示截图](./docs/first.jpg)
+![演示截图1](./docs/first.jpg)
+
+![演示截图2](./docs/second.jpg)
+![演示截图3](./docs/third.jpg)
 
 其中，AppId是在 [Wilddog](https://www.wilddog.com) 申请的应用 id，Room id 则是 即将要进入的房间号，进入同一个房间的用户会建立 webrtc 连接。
 
