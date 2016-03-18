@@ -1,22 +1,4 @@
-var isMozilla = window.mozRTCPeerConnection && !window.webkitRTCPeerConnection;
-if (isMozilla) {
-    window.URL = window.URL;
-    navigator.GetUserMedia = navigator.mozGetUserMedia;
-    window.RTCPeerConnection = window.mozRTCPeerConnection;
-    window.RTCSessionDescription = window.mozRTCSessionDescription;
-    window.RTCIceCandidate = window.mozRTCIceCandidate;
-}
 
-var isChrome = window.webkitRTCPeerConnection && !window.mozRTCPeerConnection;
-if (isChrome) {
-    window.URL = window.URL;
-    navigator.GetUserMedia = navigator.webkitGetUserMedia;
-    window.RTCPeerConnection = window.webkitRTCPeerConnection;
-    window.RTCSessionDescription = window.RTCSessionDescription;
-    window.RTCIceCandidate = window.RTCIceCandidate;
-}
-
-var configuration = null;
 var selfView;
 var joinButton;
 var audioCheckBox;
@@ -28,7 +10,13 @@ var peer;
 var viewContainer;
 var room_text;
 var appid_text;
-
+var configuration={
+	"iceServers": [
+         {
+            "url": "stun:cn1-stun.wilddog.com:3478"
+        }
+    ]
+};
 window.onload = function() {
 
     selfView = document.getElementById("self_view");
@@ -79,10 +67,11 @@ window.onload = function() {
         //创建一个房间节点
         ref_room = new Wilddog(url);
 
-        //获取本地流，注意，html页面需要在本地或公共服务器上，特别的，最近的chrome版本要求
-        //必须要使用https服务器，否则GetUserMedia无法被调用,firefox可以在http服务器上。
-        //同样，如果既没有音频输入也没有视频输入，那么GetUserMedia会返回错误。
-        navigator.GetUserMedia({
+        //获取本地流。注意，如果使用chrome，html页面需要放在本地或公共服务器上，
+        //特别的，最近的chrome版本要求必须要使用https服务器，否则GetUserMedia无法
+		//被调用。而使用firefox可以本地打开页面。
+        //同样，如果既没有音频输入也没有视频输入，那么 GetUserMedia 会返回错误。
+        navigator.getUserMedia({
             "audio": audioCheckBox.checked,
             "video": videoCheckBox.checked
         }, function(stream) {
@@ -110,7 +99,10 @@ window.onload = function() {
 
         //创建自己的节点到云端
         ref.child(localUserId).update({ "status": "created" }, function(err) {
-            console.log("create own node ", err);
+			if(err)
+			{
+	            console.log("create own node ", err);
+			}
         });
         
         //去云端查看现在有哪些用户，向这些用户的信箱发信
@@ -140,7 +132,7 @@ window.onload = function() {
             if (type == "offer") {
                 //收到对端的offer请求
                 var offer = JSON.parse(snapshot.child("value").val());
-                console.log("received offer:",offer);
+                console.log("received offer");
                 var ref_remoteUserMailbox = ref.child(remoteUserId).child("mailbox");
                 //收到远方的一个连接请求，建立p2p连接，并将回复返回给远方
                 handleRemoteOffer(ref_remoteUserMailbox, localUserId, offer, localStream);
@@ -148,23 +140,31 @@ window.onload = function() {
             else if (type == "answer") {
                 //收到对端的answer响应
                 var answer = JSON.parse(snapshot.child("value").val());
-                console.log("received answer:",offer);
+                console.log("received answer");
                 //收到对端的响应，将对端的answer响应设置到本地
                 handleRemoteAnswer(answer);
             }
+			else if (type == "candidate"){
+				//收到对端的candidate，设置到本地
+				var candidate = new RTCIceCandidate(JSON.parse(snapshot.child("value").val()));
+				if(peer != null)
+				{
+					peer.addIceCandidate(candidate);
+				}
+			}
         });
     }
 
     function sendOfferToRemote(ref_remoteUserMailbox, localUserId) {
         //创建新的peer连接
-        peer = createPeer(localStream);
+        peer = createPeer(localStream, ref_remoteUserMailbox, localUserId);
 
         //生成offer-->发送offer到对端信箱
         createOffer(ref_remoteUserMailbox, localUserId);
     }
     function handleRemoteOffer(ref_remoteUserMailbox, localUserId, offer, localStream) {
         //创建新的peer
-        peer = createPeer(localStream);
+        peer = createPeer(localStream, ref_remoteUserMailbox, localUserId);
 
         //将对端的offer sdp信息设置为RTCSessionDescription对象
         var desc = new RTCSessionDescription(offer);
@@ -200,8 +200,10 @@ window.onload = function() {
         var description = new RTCSessionDescription(answer);
         //收到对端的answer，将其设置到本地
         peer.setRemoteDescription(description, function(err) {
-            console.log("setLocalAnswer : ", err);
-        });
+            console.log("setRemoteDescription success");
+        },function(err){
+			console.log("setRemoteDescription err:",err);
+		});
     }
     
     function createOffer(ref_remoteUserMailbox, localUserId) {
@@ -212,27 +214,34 @@ window.onload = function() {
         //根据本地信息（媒体/ip等）创建offer，并发送到对端
         peer.createOffer(function(description) {
             //创建出来的offer先在本地保存一份
-            peer.setLocalDescription(description, function() {
-                var data = {};
-                data["from"] = localUserId;
-                data["type"] = "offer";
-                data["value"] = JSON.stringify(description);
-                //发送到对端信箱
-                ref_remoteUserMailbox.push(data);
-            });
-        });
+            peer.setLocalDescription(description, function(evt) {
+				var data = {};
+				data["from"] = localUserId;
+				data["type"] = "offer";
+				data["value"] = JSON.stringify(description);
+				//发送到对端信箱
+				ref_remoteUserMailbox.push(data);
+            },function(err){
+				console.log("err:",err);
+			});
+        },function(err){
+			console.log("err:",err);
+		});
     }
-    function createPeer(stream) {
+    function createPeer(stream, ref_remoteUserMailbox, localUserId) {
         if (null == stream) {
             console.log("set peer: cannot get local stream");
             return null;
         }
 
-        var peer = new RTCPeerConnection(null);
+        var peer = new RTCPeerConnection(configuration);
         
         //添加本地stream到要传输的的stream列表中
         peer.addStream(stream, function(err) {
-            console.log("setPeer: add stream error code: ", err);
+			if(err)
+			{
+				console.log("setPeer: add stream error code: ", err);
+			}
         });
         
         //设置当收到对端stream时的回调
@@ -246,7 +255,16 @@ window.onload = function() {
             view.src = URL.createObjectURL(evt.stream);
             view.style.visibility = "visible";
         };
-        
+		//当收到底层ice candidate消息，说明已经准备好了新的candidate，发送给对端
+		peer.onicecandidate = function(evt){
+			console.log("on ice candidate", evt);
+			var candidate = {};
+            candidate["from"] = localUserId;
+            candidate["type"] = "candidate";
+            candidate["value"] = JSON.stringify(evt.candidate);
+			ref_remoteUserMailbox.push(candidate);
+		}
         return peer;
     }
 }
+
