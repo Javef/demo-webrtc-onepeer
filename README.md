@@ -1,20 +1,30 @@
-## Starting the server
-The server uses [node.js](http://nodejs.org) and is started using:
-```
-node channel_server.js
-```
-The default port is 8080. The port to use can be changed by setting the environment variable PORT or giving the port as an argument to the node command. If both the environment variable and the argument are given then the argument is used.
+# 使用说明
 
-Example of how to set port using environment variable and command line argument.
-```
-PORT=9080 node channel_server.js
-node channel_server.js 10080
-```
+## 开启本地 webserver
 
-## Local testing
-The simple WebRTC app is now running at [http://localhost:8080/](http://localhost:8080/)
+本地 webserver 开启的目的是提供一个 web 环境，让网页位于服务器上。
+原因是因为调用 webrtc 的 getUserMedia 函数的 HTML 文件要放在服务器上，否则调用该函数会得到一个NavigatorUserMediaError 的错误，显示 PermissionDeniedError。
 
-![Demo app](https://github.com/EricssonResearch/openwebrtc-browser-extensions/blob/master/imgs/demoapp.png)
+这里使用 nodejs 来搭建一个本地服务器：
 
-## Live testing
-We are keeping an up-to-date version of this app available at [http://demo.openwebrtc.org](http://demo.openwebrtc.org)
+http 服务器：
+
+	node channel_server.js
+
+https 服务器：
+
+	node https_channel_server.js
+
+推荐使用 https 服务器，因为chrome浏览器最近版本都要求 getUserMedia 必须在https环境下被调用。
+
+## 使用 webrtc 聊天室
+
+### 打开页面
+
+[](./docs/first.png)
+
+其中，AppId是在 [Wilddog](https://www.wilddog.com) 申请的应用 id，Room id 则是 即将要进入的房间号，进入同一个房间的用户会建立 webrtc 连接。
+
+点击 join 后就加入房间。
+
+
