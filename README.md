@@ -21,7 +21,7 @@ https 服务器：
 
 ### 打开页面
 
-[](./docs/first.png)
+[演示截图](./docs/first.jpg)
 
 其中，AppId是在 [Wilddog](https://www.wilddog.com) 申请的应用 id，Room id 则是 即将要进入的房间号，进入同一个房间的用户会建立 webrtc 连接。
 
