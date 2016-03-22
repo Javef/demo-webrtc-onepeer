@@ -75,6 +75,7 @@ window.onload = function() {
             "audio": audioCheckBox.checked,
             "video": videoCheckBox.checked
         }, function(stream) {
+            //将stream绑定到浏览器输出
             selfView.src = URL.createObjectURL(stream);
             localStream = stream;
 

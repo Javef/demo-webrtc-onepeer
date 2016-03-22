@@ -32,4 +32,6 @@ https 服务器：
 
 点击 join 后就加入房间。
 
+## 流程
 
+![演示截图4](./docs/fourth.png)
