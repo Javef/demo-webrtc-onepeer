@@ -1,13 +1,13 @@
 # 使用说明
 
-使用时需要向 wilddog(www.wilddog.com) 申请一个 appid，用来替代信令服务器，避免自己在公网上搭建信令服务器的窘境。文档见 docs 目录。
+使用时需要向 wilddog(www.wilddog.com) 申请一个 AppId，用来替代信令服务器，避免需要自己在公网上搭建信令服务器的窘境。文档见 docs 目录。
 
 ## 使用 webrtc 聊天室
 
 ### 如果使用chrome，开启本地 webserver
 
 本地 webserver 开启的目的是提供一个 web 环境，让网页位于服务器上。
-原因是因为调用 webrtc 的 getUserMedia 函数的 HTML 文件要放在服务器上，否则调用该函数会得到一个NavigatorUserMediaError 的错误，显示 PermissionDeniedError。
+原因是 chrome 要求调用 webrtc 的 getUserMedia 函数的 HTML 文件要放在服务器上，否则调用该函数会得到一个NavigatorUserMediaError 的错误，显示 PermissionDeniedError。
 
 这里使用 nodejs 来搭建一个本地服务器：
 
