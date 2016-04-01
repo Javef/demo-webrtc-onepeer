@@ -1,5 +1,7 @@
 # 使用说明
 
+使用时需要向 wilddog(www.wilddog.com) 申请一个 appid，用来替代信令服务器，避免自己在公网上搭建信令服务器的窘境。文档见 docs 目录。
+
 ## 使用 webrtc 聊天室
 
 ### 如果使用chrome，开启本地 webserver
