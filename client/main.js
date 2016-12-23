@@ -11,7 +11,7 @@ var viewContainer;
 var room_text;
 var appid_text;
 var configuration={
-	"iceServers": [
+    "iceServers": [
          {
             "url": "stun:cn1-stun.wilddog.com:3478"
         }
@@ -69,7 +69,7 @@ window.onload = function() {
 
         //获取本地流。注意，如果使用chrome，html页面需要放在本地或公共服务器上，
         //特别的，最近的chrome版本要求必须要使用https服务器，否则GetUserMedia无法
-		//被调用。而使用firefox可以本地打开页面。
+        //被调用。而使用firefox可以本地打开页面。
         //同样，如果既没有音频输入也没有视频输入，那么 GetUserMedia 会返回错误。
         navigator.getUserMedia({
             "audio": audioCheckBox.checked,
@@ -100,12 +100,13 @@ window.onload = function() {
 
         //创建自己的节点到云端
         ref.child(localUserId).update({ "status": "created" }, function(err) {
-			if(err)
-			{
-	            console.log("create own node ", err);
-			}
+            if(err)
+            {
+                console.log("create own node ", err);
+            }
         });
-        
+        //离线时删除自身的节点
+        ref.child(localUserId).onDisconnect().remove();
         //去云端查看现在有哪些用户，向这些用户的信箱发信
         ref.once("value", function(snap) {
             snap.forEach(function(snapshot) {
@@ -135,7 +136,7 @@ window.onload = function() {
                 var offer = JSON.parse(snapshot.child("value").val());
                 console.log("received offer");
                 var ref_remoteUserMailbox = ref.child(remoteUserId).child("mailbox");
-                //收到远方的一个连接请求，建立p2p连接，并将回复返回给远方
+                //收到对端的一个连接请求，建立p2p连接，并将回复返回给对端
                 handleRemoteOffer(ref_remoteUserMailbox, localUserId, offer, localStream);
             }
             else if (type == "answer") {
@@ -145,14 +146,15 @@ window.onload = function() {
                 //收到对端的响应，将对端的answer响应设置到本地
                 handleRemoteAnswer(answer);
             }
-			else if (type == "candidate"){
-				//收到对端的candidate，设置到本地
-				var candidate = new RTCIceCandidate(JSON.parse(snapshot.child("value").val()));
-				if(peer != null)
-				{
-					peer.addIceCandidate(candidate);
-				}
-			}
+            else if (type == "candidate"){
+                //收到对端的candidate，设置到本地
+                console.log("received candidate");
+                var candidate = new RTCIceCandidate(JSON.parse(snapshot.child("value").val()));
+                if(peer != null)
+                {
+                    peer.addIceCandidate(candidate);
+                }
+            }
         });
     }
 
@@ -203,8 +205,8 @@ window.onload = function() {
         peer.setRemoteDescription(description, function(err) {
             console.log("setRemoteDescription success");
         },function(err){
-			console.log("setRemoteDescription err:",err);
-		});
+            console.log("setRemoteDescription err:",err);
+        });
     }
     
     function createOffer(ref_remoteUserMailbox, localUserId) {
@@ -216,18 +218,18 @@ window.onload = function() {
         peer.createOffer(function(description) {
             //创建出来的offer先在本地保存一份
             peer.setLocalDescription(description, function(evt) {
-				var data = {};
-				data["from"] = localUserId;
-				data["type"] = "offer";
-				data["value"] = JSON.stringify(description);
-				//发送到对端信箱
-				ref_remoteUserMailbox.push(data);
+                var data = {};
+                data["from"] = localUserId;
+                data["type"] = "offer";
+                data["value"] = JSON.stringify(description);
+                //发送到对端信箱
+                ref_remoteUserMailbox.push(data);
             },function(err){
-				console.log("err:",err);
-			});
+                console.log("err:",err);
+            });
         },function(err){
-			console.log("err:",err);
-		});
+            console.log("err:",err);
+        });
     }
     function createPeer(stream, ref_remoteUserMailbox, localUserId) {
         if (null == stream) {
@@ -239,15 +241,15 @@ window.onload = function() {
         
         //添加本地stream到要传输的的stream列表中
         peer.addStream(stream, function(err) {
-			if(err)
-			{
-				console.log("setPeer: add stream error code: ", err);
-			}
+            if(err)
+            {
+                console.log("setPeer: add stream error code: ", err);
+            }
         });
         
         //设置当收到对端stream时的回调
         peer.onaddstream = function(evt) {
-            console.log("on add stream");
+            console.log("onaddstream");
 
             //在html上创建对端的video DOM
             var view = document.createElement("video");
@@ -256,15 +258,17 @@ window.onload = function() {
             view.src = URL.createObjectURL(evt.stream);
             view.style.visibility = "visible";
         };
-		//当收到底层ice candidate消息，说明已经准备好了新的candidate，发送给对端
-		peer.onicecandidate = function(evt){
-			console.log("on ice candidate", evt);
-			var candidate = {};
+        //当收到底层ice candidate消息，说明已经准备好了新的candidate，发送给对端
+        peer.onicecandidate = function(evt){
+            console.log("onicecandidate");
+            if(evt.candidate == null)
+                return;
+            var candidate = {};
             candidate["from"] = localUserId;
             candidate["type"] = "candidate";
             candidate["value"] = JSON.stringify(evt.candidate);
-			ref_remoteUserMailbox.push(candidate);
-		}
+            ref_remoteUserMailbox.push(candidate);
+        }
         return peer;
     }
 }
